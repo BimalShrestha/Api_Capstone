@@ -23,30 +23,57 @@ public class MySqlProductDao extends MySqlDaoBase implements ProductDao
     {
         List<Product> products = new ArrayList<>();
 
-        String sql = "SELECT * FROM products " +
-                "WHERE (category_id = ? OR ? = -1) " +
-                "   AND (price <= ? OR ? = -1) " +
-                "   AND (color = ? OR ? = '') ";
+        // Base SQL query
+        String sql = "SELECT * FROM products WHERE 1=1";
 
-        categoryId = categoryId == null ? -1 : categoryId;
-        minPrice = minPrice == null ? new BigDecimal("-1") : minPrice;
-        maxPrice = maxPrice == null ? new BigDecimal("-1") : maxPrice;
-        color = color == null ? "" : color;
+        // Dynamic conditions based on parameters
+        if (categoryId != null) {
+            sql += " AND category_id = ?";
+        }
 
-        try (Connection connection = getConnection()) {
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setBigDecimal(1, new BigDecimal(categoryId));
-            statement.setBigDecimal(2, new BigDecimal(categoryId));
-            statement.setBigDecimal(3, minPrice);
-            statement.setBigDecimal(4, minPrice);
-            statement.setString(5, color);
-            statement.setString(6, color);
 
-            ResultSet row = statement.executeQuery();
+        if (minPrice != null) {
+            sql += " AND price >= ?";
+        }
 
-            while (row.next())
-            {
-                Product product = mapRow(row);
+        
+
+
+        if (maxPrice != null) {
+            sql += " AND price <= ?";
+        }
+
+        if (color != null && !color.isEmpty()) {
+            sql += " AND color = ?";
+        }
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            // Set parameters based on conditions
+            int parameterIndex = 1;
+            if (categoryId != null) {
+                statement.setInt(parameterIndex++, categoryId);
+            }
+
+            if (minPrice != null) {
+                statement.setBigDecimal(parameterIndex++, minPrice);
+            }
+
+            if (maxPrice != null) {
+                statement.setBigDecimal(parameterIndex++, maxPrice);
+            }
+
+            if (color != null && !color.isEmpty()) {
+                statement.setString(parameterIndex, color);
+            }
+
+            // Execute the query
+            ResultSet resultSet = statement.executeQuery();
+
+            // Process the result set
+            while (resultSet.next()) {
+                Product product = mapRow(resultSet);
                 products.add(product);
             }
         }
